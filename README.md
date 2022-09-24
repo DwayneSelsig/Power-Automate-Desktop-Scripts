@@ -12,7 +12,7 @@ This is where I'll share my Power Automate Desktop flows. Each flow starts with 
 3. Open Power Automate Desktop.
 3. Create a new flow.
 4. Enter a name for your flow and click on Create.
-5. Right-click inside the Main action section where it says: "You don't have any actions here yet".
-6. Select Paste.
+5. Click inside the Main action section where it says: "You don't have any actions here yet".
+6. Press CRTL+V.
 
 You can now run the flow.
