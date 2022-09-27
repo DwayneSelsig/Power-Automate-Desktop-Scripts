@@ -1,4 +1,4 @@
-# When you purchase a Minecraft Realm subscripton, you'll get a club on Xbox.com where all screenshots are stored that have been shared by your members. This flow enables you to download all images and comments to store them locally. 
+# When you purchase a Minecraft Realm subscripton, you'll get a club on Xbox.com where all screenshots are stored that have been shared by your members. This flow enables you to download all images and comments to store them locally.
 # No changes are necessary. This flow will ask you for your browser of choice. Make sure Power Automate browser extension is installed.
 # Minimal Run Delay: 50ms.
 # Recommended Run Delay: 10ms (if your computer and internet connection can handle it).
@@ -9,9 +9,9 @@ Mozilla Firefox''' IsTopMost: False AllowEmpty: False SelectedItem=> SelectedBro
 SET XboxAccountProfileUrl TO $'''https://account.xbox.com/Profile'''
 SWITCH SelectedBrowser
     CASE = $'''Mozilla Firefox'''
-        WebAutomation.LaunchFirefox.LaunchFirefox Url: XboxAccountProfileUrl WindowState: WebAutomation.BrowserWindowState.Normal ClearCache: False ClearCookies: False WaitForPageToLoadTimeout: 60 Timeout: 60 BrowserInstance=> Browser
+        WebAutomation.LaunchFirefox.LaunchFirefox Url: XboxAccountProfileUrl WindowState: WebAutomation.BrowserWindowState.Maximized ClearCache: False ClearCookies: False WaitForPageToLoadTimeout: 60 Timeout: 60 BrowserInstance=> Browser
     CASE = $'''Google Chrome'''
-        WebAutomation.LaunchChrome.LaunchChrome Url: XboxAccountProfileUrl WindowState: WebAutomation.BrowserWindowState.Normal ClearCache: False ClearCookies: False WaitForPageToLoadTimeout: 60 Timeout: 60 BrowserInstance=> Browser
+        WebAutomation.LaunchChrome.LaunchChrome Url: XboxAccountProfileUrl WindowState: WebAutomation.BrowserWindowState.Maximized ClearCache: False ClearCookies: False WaitForPageToLoadTimeout: 60 Timeout: 60 BrowserInstance=> Browser
     DEFAULT
         WebAutomation.LaunchEdge.LaunchEdge Url: XboxAccountProfileUrl WindowState: WebAutomation.BrowserWindowState.Maximized ClearCache: False ClearCookies: False WaitForPageToLoadTimeout: 60 Timeout: 60 BrowserInstance=> Browser
 END
@@ -22,13 +22,15 @@ IF NotContains(CurrentURL, $'''clubs/profile?clubid=''', True) THEN
     WAIT 1
     GOTO CheckRealmUrl
 END
-Display.ShowMessageDialog.ShowMessageWithTimeout Title: $'''Thank you''' Message: $'''I\'ll take it from here.''' Icon: Display.Icon.Information Buttons: Display.Buttons.OK DefaultButton: Display.DefaultButton.Button1 IsTopMost: False Timeout: 5
+Display.ShowMessageDialog.ShowMessageWithTimeout Title: $'''Thank you''' Message: $'''Thank you! Now I need to scroll and click on buttons. 
+
+Don\'t touch the browser. I will close the browser when I\'m done.''' Icon: Display.Icon.Information Buttons: Display.Buttons.OK DefaultButton: Display.DefaultButton.Button1 IsTopMost: False Timeout: 10
 /# We're using the Canadian url for an easy date format. US uses slashes '/' in their date. Those characters aren't allowed in a filename.
 
 Also, we don't have to translate the 'Get more' button.#/
 Text.SplitText.SplitWithDelimiter Text: CurrentURL CustomDelimiter: $'''=''' IsRegEx: False Result=> RealmURL
 WebAutomation.GoToWebPage.GoToWebPage BrowserInstance: Browser Url: $'''https://account.xbox.com/en-ca/clubs/profile?clubid=%RealmURL[1]%''' WaitForPageToLoadTimeout: 60
-WAIT 5
+WAIT 2
 # Sometimes the webpage fails to load posts. Refreshing the page solves this.
 SET NoRecentActivityText TO $'''There is no recent activity to display'''
 LABEL CheckForImages
@@ -40,7 +42,7 @@ END
 SET SafetyCountPosts TO 0
 SET GetMoreButtonText TO $'''Get more'''
 LABEL ExpandResults
-IF SafetyCountPosts >= 25 THEN
+IF SafetyCountPosts >= 50 THEN
     Display.ShowMessageDialog.ShowMessage Title: $'''Continue with getting more posts?''' Message: $'''There are a lot of posts. Do you want to continue retrieving more posts?''' Icon: Display.Icon.Question Buttons: Display.Buttons.YesNoCancel DefaultButton: Display.DefaultButton.Button1 IsTopMost: True ButtonPressed=> ContinueButton
     SWITCH ContinueButton
         CASE = $'''Yes'''
@@ -66,20 +68,32 @@ WebAutomation.ExecuteJavascript BrowserInstance: Browser Javascript: $'''functio
 Text.ToNumber Text: BrowserScrollHeight Number=> BrowserScrollHeightAsNumber
 WebAutomation.ExecuteJavascript BrowserInstance: Browser Javascript: $'''function ExecuteScript() { return window.innerHeight; }''' Result=> BrowserWindowHeight
 Text.ToNumber Text: BrowserWindowHeight Number=> BrowserWindowHeightAsNumber
-LOOP LoopIndex FROM 1 TO BrowserScrollHeightAsNumber STEP BrowserWindowHeightAsNumber / 3
+LOOP LoopIndex FROM 1 TO BrowserScrollHeightAsNumber - BrowserWindowHeightAsNumber STEP BrowserWindowHeightAsNumber / 3
     WebAutomation.ExecuteJavascript BrowserInstance: Browser Javascript: $'''function ExecuteScript() { window.scrollTo(0, %LoopIndex%); }'''
 END
 # Now we're extracting the data from the webpage. We're also building a clean table to export to csv.
 WebAutomation.ExtractData.ExtractTable BrowserInstance: Browser Control: $'''html > body > app > core-page > div > section:eq(0) > core-area > core-region-pivot > section > section > section:eq(0) > div > div > rendermodule > div > xbox-xboxactivityfeed > div > xbox-placement-tile > div > div > section''' ExtractionParameters: {[$'''xbox-feed-itemwrapper > div > xbox-feedheader > div > div''', $'''Own Text''', $'''''', $'''Date'''], [$'''xbox-feed-itemwrapper > div > xbox-feedheader > div > xbox-people > div > a > xbox-profiletext > div > div:eq(0) > span''', $'''Own Text''', $'''''', $'''DisplayName'''], [$'''xbox-feed-itemwrapper > div > xbox-feedheader > div > p''', $'''Own Text''', $'''''', $'''Note'''], [$'''xbox-feed-itemwrapper > div > xbox-feed-image > div > picture > img''', $'''Source Link''', $'''''', $'''Img'''] } PostProcessData: False TimeoutInSeconds: 60 ExtractedData=> DataFromWebPage
 Variables.CreateNewDatatable InputTable: { ^['ID', 'User', 'Note', 'Date', 'ImageURL'], [$'''''', $'''''', $'''''', $'''''', $''''''] } DataTable=> CleanDataTable
 Variables.DeleteRowFromDataTable DataTable: CleanDataTable RowIndex: 0
-Display.SelectFolder Description: $'''Where to store the data?''' IsTopMost: True SelectedFolder=> SelectedFolder
+WebAutomation.CloseWebBrowser BrowserInstance: Browser
+LABEL SelectFolder
+Display.SelectFolder Description: $'''Where do you want to save the images?''' IsTopMost: True SelectedFolder=> SelectedFolder
+IF NotContains(SelectedFolder, $'''\\''', True) THEN
+    GOTO SelectFolder
+END
+Display.SelectFromListDialog.SelectFromList Title: $'''Newest or oldest first?''' Message: $'''In which order would you like these images?''' List: $'''Oldest first
+Newest first''' IsTopMost: True AllowEmpty: False SelectedItem=> SelectedOrder
 LOOP LoopIndex FROM 0 TO DataFromWebPage.RowsCount - 1 STEP 1
     Text.SplitText.SplitWithDelimiter Text: DataFromWebPage[LoopIndex]['Img'] CustomDelimiter: $'''&''' IsRegEx: False Result=> URLs
-    SET item TO [DataFromWebPage.RowsCount - LoopIndex, DataFromWebPage[LoopIndex]['DisplayName'], DataFromWebPage[LoopIndex]['Note'], DataFromWebPage[LoopIndex]['Date'], URLs[0] + '&' + URLs[3]]
+    SWITCH SelectedOrder
+        CASE = $'''Newest first'''
+            SET item TO [LoopIndex + 1, DataFromWebPage[LoopIndex]['DisplayName'], DataFromWebPage[LoopIndex]['Note'], DataFromWebPage[LoopIndex]['Date'], URLs[0] + '&' + URLs[3]]
+            Web.DownloadFromWeb.DownloadToFile Url: $'''%URLs[0]%&%URLs[3]%''' FilePath: $'''%SelectedFolder%\\%LoopIndex + 1% - %DataFromWebPage[LoopIndex]['Date']% - %DataFromWebPage[LoopIndex]['DisplayName']%.jpg''' ConnectionTimeout: 30 FollowRedirection: False ClearCookies: False UserAgent: $'''Mozilla/5.0 (Windows; U; Windows NT 5.1; en-US; rv:1.8.1.21) Gecko/20100312 Firefox/3.6''' Encoding: Web.Encoding.AutoDetect AcceptUntrustedCertificates: False
+        DEFAULT
+            SET item TO [DataFromWebPage.RowsCount - LoopIndex, DataFromWebPage[LoopIndex]['DisplayName'], DataFromWebPage[LoopIndex]['Note'], DataFromWebPage[LoopIndex]['Date'], URLs[0] + '&' + URLs[3]]
+            Web.DownloadFromWeb.DownloadToFile Url: $'''%URLs[0]%&%URLs[3]%''' FilePath: $'''%SelectedFolder%\\%DataFromWebPage.RowsCount - LoopIndex% - %DataFromWebPage[LoopIndex]['Date']% - %DataFromWebPage[LoopIndex]['DisplayName']%.jpg''' ConnectionTimeout: 30 FollowRedirection: False ClearCookies: False UserAgent: $'''Mozilla/5.0 (Windows; U; Windows NT 5.1; en-US; rv:1.8.1.21) Gecko/20100312 Firefox/3.6''' Encoding: Web.Encoding.AutoDetect AcceptUntrustedCertificates: False
+    END
     Variables.AddRowToDataTable.AppendRowToDataTable DataTable: CleanDataTable RowToAdd: item
-    Web.DownloadFromWeb.DownloadToFile Url: $'''%URLs[0]%&%URLs[3]%''' FilePath: $'''%SelectedFolder%\\%DataFromWebPage.RowsCount - LoopIndex% - %DataFromWebPage[LoopIndex]['Date']% - %DataFromWebPage[LoopIndex]['DisplayName']%.jpg''' ConnectionTimeout: 30 FollowRedirection: False ClearCookies: False UserAgent: $'''Mozilla/5.0 (Windows; U; Windows NT 5.1; en-US; rv:1.8.1.21) Gecko/20100312 Firefox/3.6''' Encoding: Web.Encoding.AutoDetect AcceptUntrustedCertificates: False
 END
-WebAutomation.CloseWebBrowser BrowserInstance: Browser
 File.WriteToCSVFile.WriteCSV VariableToWrite: CleanDataTable CSVFile: $'''%SelectedFolder%\\output.csv''' CsvFileEncoding: File.CSVEncoding.Unicode IncludeColumnNames: True IfFileExists: File.IfFileExists.Overwrite ColumnsSeparator: File.CSVColumnsSeparator.Tab
 LABEL EndOfFlow
