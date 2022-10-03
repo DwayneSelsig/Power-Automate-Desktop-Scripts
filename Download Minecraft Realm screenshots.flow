@@ -10,10 +10,22 @@ SET XboxAccountProfileUrl TO $'''https://account.xbox.com/Profile'''
 SWITCH SelectedBrowser
     CASE = $'''Mozilla Firefox'''
         WebAutomation.LaunchFirefox.LaunchFirefox Url: XboxAccountProfileUrl WindowState: WebAutomation.BrowserWindowState.Maximized ClearCache: False ClearCookies: False WaitForPageToLoadTimeout: 60 Timeout: 60 BrowserInstance=> Browser
+            ON ERROR REPEAT 3 TIMES WAIT 5
+            ON ERROR
+                GOTO StartOfFlow
+            END
     CASE = $'''Google Chrome'''
         WebAutomation.LaunchChrome.LaunchChrome Url: XboxAccountProfileUrl WindowState: WebAutomation.BrowserWindowState.Maximized ClearCache: False ClearCookies: False WaitForPageToLoadTimeout: 60 Timeout: 60 BrowserInstance=> Browser
+            ON ERROR REPEAT 3 TIMES WAIT 5
+            ON ERROR
+                GOTO StartOfFlow
+            END
     DEFAULT
         WebAutomation.LaunchEdge.LaunchEdge Url: XboxAccountProfileUrl WindowState: WebAutomation.BrowserWindowState.Maximized ClearCache: False ClearCookies: False WaitForPageToLoadTimeout: 60 Timeout: 60 BrowserInstance=> Browser
+            ON ERROR REPEAT 3 TIMES WAIT 5
+            ON ERROR
+                GOTO StartOfFlow
+            END
 END
 Display.ShowMessageDialog.ShowMessageWithTimeout Title: $'''Go to your realm''' Message: $'''Please navigate to your realm.''' Icon: Display.Icon.Information Buttons: Display.Buttons.OK DefaultButton: Display.DefaultButton.Button1 IsTopMost: True Timeout: 30
 LABEL CheckRealmUrl
