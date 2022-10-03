@@ -68,8 +68,9 @@ WebAutomation.ExecuteJavascript BrowserInstance: Browser Javascript: $'''functio
 Text.ToNumber Text: BrowserScrollHeight Number=> BrowserScrollHeightAsNumber
 WebAutomation.ExecuteJavascript BrowserInstance: Browser Javascript: $'''function ExecuteScript() { return window.innerHeight; }''' Result=> BrowserWindowHeight
 Text.ToNumber Text: BrowserWindowHeight Number=> BrowserWindowHeightAsNumber
-LOOP LoopIndex FROM 1 TO BrowserScrollHeightAsNumber - BrowserWindowHeightAsNumber STEP BrowserWindowHeightAsNumber / 3
+LOOP LoopIndex FROM 1 TO BrowserScrollHeightAsNumber - BrowserWindowHeightAsNumber STEP BrowserWindowHeightAsNumber / 4
     WebAutomation.ExecuteJavascript BrowserInstance: Browser Javascript: $'''function ExecuteScript() { window.scrollTo(0, %LoopIndex%); }'''
+    WAIT 0.1
 END
 # Now we're extracting the data from the webpage. We're also building a clean table to export to csv.
 WebAutomation.ExtractData.ExtractTable BrowserInstance: Browser Control: $'''html > body > app > core-page > div > section:eq(0) > core-area > core-region-pivot > section > section > section:eq(0) > div > div > rendermodule > div > xbox-xboxactivityfeed > div > xbox-placement-tile > div > div > section''' ExtractionParameters: {[$'''xbox-feed-itemwrapper > div > xbox-feedheader > div > div''', $'''Own Text''', $'''''', $'''Date'''], [$'''xbox-feed-itemwrapper > div > xbox-feedheader > div > xbox-people > div > a > xbox-profiletext > div > div:eq(0) > span''', $'''Own Text''', $'''''', $'''DisplayName'''], [$'''xbox-feed-itemwrapper > div > xbox-feedheader > div > p''', $'''Own Text''', $'''''', $'''Note'''], [$'''xbox-feed-itemwrapper > div > xbox-feed-image > div > picture > img''', $'''Source Link''', $'''''', $'''Img'''] } PostProcessData: False TimeoutInSeconds: 60 ExtractedData=> DataFromWebPage
